@@ -1,91 +1,142 @@
-# Bank of America – Cloud-Native Microservices Platform
+# Bank of America — Claims Management Platform (Small-Scale Demo)
 
-**Client:** Bank of America, Richmond, VA
-**Period:** April 2024 – Present
-**Role:** Sr. Java Full Stack Developer
+**Client:** Bank of America, Richmond, VA  |  **Role:** Sr. Java Full Stack Developer  |  **Period:** Apr 2024 – Present
 
----
-
-## Project Overview
-
-Architected and delivered a cloud-native, event-driven microservices platform supporting high-volume claims processing, clinical data workflows, and AI-powered automation for Bank of America. The platform is built on Java 17 and Spring Boot 3+, deployed on AWS EKS/ECS, and designed for HIPAA-compliant, enterprise-scale operations.
+A working small-scale implementation of the BOA claims platform showcasing the core architecture from the resume: microservices, JWT security, event-driven Kafka messaging, and a React dashboard.
 
 ---
 
-## Key Responsibilities
+## Architecture
 
-### Microservices & Backend Architecture
-- Designed and developed cloud-native microservices using **Java 17**, **Spring Boot 3+**, **Spring Cloud**, **Spring MVC**, and **Hibernate ORM** to support high-volume claims and clinical data workflows
-- Enhanced routing, throttling, and service-to-service security using **Spring Cloud Gateway** with centralized configuration via **Spring Cloud Config**
-- Improved performance and resilience using **Redis**, **Hazelcast**, and **Resilience4j**, reducing latency and enhancing fault tolerance
-
-### AI & Automation
-- Led end-to-end development of an **AI-powered claims automation platform** using **AWS Bedrock** and **SageMaker**, improving processing speed by 25%
-- Built **Python-based services and data pipelines** for automation, ingestion, and transformation, integrating with Snowflake, databases, and object storage to support Java microservices and analytics workflows
-- Used **GitHub Copilot** and **Claude AI** to generate boilerplate, validate APIs, and accelerate documentation and review cycles
-
-### Event-Driven Systems
-- Architected high-throughput event-driven systems using **Kafka Streams**, **CQRS**, **Event Sourcing**, **Avro/Protobuf**, and **Confluent Schema Registry**, reducing message latency by 50%
-
-### Healthcare Interoperability
-- Built and integrated secure REST APIs with EMR/EHR systems using **HL7/FHIR** standards to enable healthcare interoperability across internal and vendor platforms
-
-### Security & Compliance
-- Implemented enterprise-grade security with **OAuth2.1**, **JWT**, **Spring Security**, **mTLS**, **KMS encryption**, **VPC endpoints**, and **HIPAA-compliant PHI protection**
-
-### Infrastructure & DevOps
-- Developed **Terraform IaC modules** for VPC, EKS, IAM roles, ALBs, DynamoDB, CloudWatch alerts, and full automated provisioning pipelines
-- Deployed and operated microservices on **ECS/EKS** with **GitOps** via **ArgoCD** and **Helm Charts** for version-controlled Kubernetes deployments
-- Implemented service mesh patterns with **Istio/Envoy** including mTLS, traffic shifting, canary rollouts, and distributed telemetry
-- Automated provisioning using **CloudFormation** and **Ansible**, reducing manual deployment errors by 40%
-
-### Observability
-- Implemented end-to-end observability with **OpenTelemetry**, **Prometheus/Grafana**, **ELK Stack**, **Splunk**, **Zipkin**, and **CloudWatch**
-
-### Data Management
-- Managed **Aurora**, **DynamoDB**, and **MongoDB** clusters, optimizing indexing, schema design, and query performance for large datasets
-
-### Frontend
-- Developed UI applications using **Angular (13–17)** and **React** with **TypeScript**, improving performance and scalability
-
-### Testing
-- Implemented comprehensive test automation using **JUnit**, **Mockito**, **Testcontainers**, **WireMock**, **Pact**, **Cucumber**, and **JEST**
-
-### Collaboration
-- Collaborated in **Agile/Scrum** with JIRA/Confluence and coordinated with cross-functional teams for feature delivery
+```
+┌─────────────────┐     REST/JWT      ┌──────────────────────┐
+│  React Frontend │ ◄───────────────► │   claims-service     │
+│  (Vite + TS)    │                   │   Spring Boot 3      │
+│  Port 3000      │                   │   Java 17  •  H2 DB  │
+└─────────────────┘                   │   Port 8080          │
+                                      └──────────┬───────────┘
+                                                 │ Kafka
+                                                 ▼
+                                      ┌──────────────────────┐
+                                      │ notification-service  │
+                                      │ Spring Boot 3        │
+                                      │ Kafka Consumer       │
+                                      └──────────────────────┘
+```
 
 ---
 
-## Technology Stack
+## Project Structure
 
-| Category | Technologies |
+```
+BOA/
+├── claims-service/               # Spring Boot 3, Java 17
+│   └── src/main/java/com/boa/claims/
+│       ├── controller/           # AuthController, ClaimController
+│       ├── service/              # AuthService, ClaimService, ClaimEventProducer
+│       ├── model/                # Claim, AppUser, ClaimStatus
+│       ├── repository/           # JPA repositories
+│       ├── security/             # JwtService, JwtFilter
+│       └── config/               # SecurityConfig, KafkaConfig, DataSeeder
+├── notification-service/         # Kafka consumer (event-driven)
+├── frontend/                     # React 18 + TypeScript + Vite
+│   └── src/
+│       ├── components/           # Login, Dashboard, ClaimForm
+│       ├── api/                  # Axios client with JWT interceptor
+│       └── types/                # TypeScript interfaces
+└── docker-compose.yml            # Full stack: Kafka + both services + frontend
+```
+
+---
+
+## Key Features (Bullet Points)
+
+### Backend — claims-service
+- **JWT Authentication** — stateless login/register with JJWT 0.12, BCrypt password hashing
+- **Claims CRUD API** — submit, list, get by ID, update status via REST endpoints
+- **Event-Driven** — publishes `SUBMITTED`, `APPROVED`, `REJECTED`, `IN_REVIEW` events to Kafka
+- **Spring Security** — stateless filter chain, CORS config, H2 console access for dev
+- **H2 In-Memory DB** — swap-ready for Aurora/PostgreSQL in production
+- **DataSeeder** — seeds two users (`admin`, `analyst`) and 3 demo claims on startup
+- **Actuator** — `/actuator/health` and `/actuator/metrics` exposed out of the box
+- **Validation** — `@Valid` on request DTOs, global exception handler for clean error responses
+
+### Backend — notification-service
+- **Kafka Consumer** — listens on `claims-events` topic, group `notification-service`
+- **Extension point** — wired for email/SMS/push in production
+
+### Frontend — React + TypeScript
+- **Login page** — JWT login and register with demo credentials hint
+- **Dashboard** — summary cards (counts + total value) per status
+- **Filter tabs** — filter claims by ALL / PENDING / IN_REVIEW / APPROVED / REJECTED
+- **Claim cards** — inline status dropdown to update each claim's status
+- **New Claim modal** — form with validation (name, type, amount, description)
+- **Axios interceptor** — attaches Bearer token to every request automatically
+
+### Infrastructure
+- **Docker Compose** — one command spins up Kafka + Zookeeper + both services + frontend
+- **Multi-stage Dockerfiles** — Maven build stage → slim JRE runtime image
+
+---
+
+## Quick Start
+
+### Option A — Docker (full stack with Kafka)
+
+```bash
+docker compose up --build
+```
+
+- Frontend → http://localhost:3000
+- API → http://localhost:8080
+- H2 Console → http://localhost:8080/h2-console (JDBC URL: `jdbc:h2:mem:claimsdb`)
+
+### Option B — Local dev (no Kafka required)
+
+```bash
+# Terminal 1 — backend
+cd claims-service
+./mvnw spring-boot:run
+
+# Terminal 2 — frontend
+cd frontend
+npm install && npm run dev
+```
+
+Open http://localhost:3000 — Kafka events are silently skipped when the broker is unavailable.
+
+---
+
+## API Reference
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `/api/auth/login` | None | Returns JWT token |
+| POST | `/api/auth/register` | None | Creates account, returns token |
+| GET | `/api/claims` | Bearer | List all claims |
+| GET | `/api/claims/{id}` | Bearer | Get single claim |
+| POST | `/api/claims` | Bearer | Submit new claim |
+| PATCH | `/api/claims/{id}/status?status=APPROVED` | Bearer | Update claim status |
+
+**Demo credentials:** `admin` / `password`  or  `analyst` / `password`
+
+---
+
+## Tech Stack (from Resume)
+
+| Layer | Technologies Used |
 |---|---|
-| **Languages** | Java 17, Python, TypeScript |
-| **Frameworks** | Spring Boot 3+, Spring Cloud, Spring MVC, Hibernate ORM |
-| **Cloud** | AWS (EKS, ECS, Lambda, Aurora, DynamoDB, API Gateway, CloudWatch) |
-| **Messaging** | Kafka Streams, Avro/Protobuf, Confluent Schema Registry, SQS/SNS |
-| **Databases** | PostgreSQL, MongoDB, DynamoDB, Elasticsearch, Redis, Hazelcast |
-| **DevOps** | Docker, Kubernetes, Helm, ArgoCD, Terraform, CloudFormation, Ansible |
-| **Security** | OAuth2.1, JWT, mTLS, Spring Security, KMS |
-| **Observability** | OpenTelemetry, Prometheus, Grafana, ELK, Splunk, Zipkin |
-| **Frontend** | React.js, Angular 13–17, TypeScript |
-| **Testing** | JUnit, Mockito, Testcontainers, WireMock, Pact, Cucumber, JEST |
-| **AI/ML** | AWS Bedrock, SageMaker, GitHub Copilot, Claude AI |
-| **Standards** | HL7/FHIR, HIPAA, CQRS, Event Sourcing |
+| **Backend** | Java 17, Spring Boot 3.2, Spring Security, Spring Data JPA |
+| **Messaging** | Apache Kafka, Spring Kafka |
+| **Database** | H2 (dev) → Aurora/PostgreSQL (prod) |
+| **Security** | JWT (JJWT 0.12), BCrypt, CORS, stateless sessions |
+| **Frontend** | React 18, TypeScript, Vite, Axios |
+| **Testing** | JUnit 5, Spring MockMvc, Kafka auto-config excluded in tests |
+| **DevOps** | Docker, Docker Compose, multi-stage builds, nginx |
 
 ---
 
-## Architecture Highlights
-
-- **Event-Driven Architecture** with CQRS and Event Sourcing patterns via Kafka Streams
-- **Service Mesh** with Istio/Envoy for mTLS, traffic shifting, and canary deployments
-- **GitOps** delivery model using ArgoCD and Helm for Kubernetes
-- **Zero-Trust Security** with mTLS, OAuth2.1, and VPC-isolated infrastructure
-- **AI-Augmented Workflows** using AWS Bedrock, SageMaker, and LLM tooling
-
----
-
-## Quantified Impact
+## Quantified Impact (from Production)
 
 - **25%** improvement in claims processing speed via AI automation (AWS Bedrock + SageMaker)
 - **50%** reduction in message latency through Kafka Streams and event-driven architecture
