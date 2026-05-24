@@ -122,7 +122,7 @@ Open http://localhost:3000 — Kafka events are silently skipped when the broker
 
 ---
 
-## Tech Stack (from Resume)
+## Tech Stack
 
 | Layer | Technologies Used |
 |---|---|
