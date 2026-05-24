@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 spring:
   datasource:
@@ -27,6 +27,9 @@ spring:
       retries: 3
     admin:
       fail-fast: false
+
+cors:
+  allowed-origins: ${CORS_ORIGINS:http://localhost:3000}
 
 app:
   jwt:
